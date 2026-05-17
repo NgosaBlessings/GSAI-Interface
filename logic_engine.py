@@ -11,7 +11,12 @@ class GSAILogic:
         self.points = np.log1p(self.df.iloc[:500, [4, 5]].values) 
         
         # Now normalize that logged data to 0.1 - 0.9 so it's not touching the edges
-        self.points = 0.1 + 0.8 * (self.points - self.points.min(axis=0)) / (self.points.max(axis=0) - self.points.min(axis=0))
+        p_min = self.points.min(axis=0)
+        p_max = self.points.max(axis=0)
+        
+        # Guard against zero-division if data range is flat
+        range_denom = np.where((p_max - p_min) == 0, 1, p_max - p_min)
+        self.points = 0.1 + 0.8 * (self.points - p_min) / range_denom
         
         self.centroids = []
         self.clusters = []
@@ -37,11 +42,12 @@ class GSAILogic:
         return self.centroids
 
     def calculate_wcss(self):
-        """Calculate the 'Game Score' (Inertia)"""
+        """Calculate the 'Game Score' (Inertia) with empty-cluster safety handles"""
         score = 0
         for i, c in enumerate(self.centroids):
             cluster_points = self.points[self.clusters == i]
-            score += np.sum((cluster_points - c)**2)
+            if len(cluster_points) > 0:
+                score += np.sum((cluster_points - c)**2)
         return score
 
 # Quick test

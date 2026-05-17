@@ -11,11 +11,15 @@ class GSAIApp(ctk.CTk):
         self.title("GSAI - Gamified Skill Acquisition Interface")
         self.geometry("1100x600")
 
+        # Track stats
+        self.iteration_count = 0
+        self.user_coords = []
+
         # Grid config
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
-        # Sidebar
+        # Sidebar Panel
         self.sidebar = ctk.CTkFrame(self, width=200)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         
@@ -27,46 +31,61 @@ class GSAIApp(ctk.CTk):
         self.btn_step = ctk.CTkButton(self.sidebar, text="2. Next Step", state="disabled", command=self.next_logic_step)
         self.btn_step.pack(pady=10, padx=20)
 
+        # Stats Labels
         self.score_label = ctk.CTkLabel(self.sidebar, text="Score: 0.00", font=("Arial", 14))
-        self.score_label.pack(pady=20)
+        self.score_label.pack(pady=10)
 
-        # Canvas
+        self.iter_label = ctk.CTkLabel(self.sidebar, text="Iteration: 0", font=("Arial", 14))
+        self.iter_label.pack(pady=10)
+
+        # Interactive Canvas Area
         self.canvas = ctk.CTkCanvas(self, bg="#1a1a1a", highlightthickness=0)
         self.canvas.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         
-        # Bind CLICK to canvas
+        # Bind CLICK event to canvas
         self.canvas.bind("<Button-1>", self.handle_click)
 
-        # Logic Setup
+        # Initialize the math engine
         self.engine = GSAILogic('data/KDDTrain+_20Percent.txt')
-        self.user_coords = []
 
     def draw_points(self):
         self.canvas.delete("all")
+        # Reset iteration trackers when points are re-initialized
+        self.iteration_count = 0
+        self.user_coords = []
+        self.engine.centroids = []
+        self.iter_label.configure(text="Iteration: 0")
+        self.score_label.configure(text="Score: 0.00")
+        self.btn_step.configure(state="disabled")
+
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
         for p in self.engine.points:
             self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill="#39FF14", outline="")
-        print("Points rendered.")
+        print("Points rendered with log scaling.")
 
     def handle_click(self, event):
         if len(self.user_coords) < 5:
             x, y = event.x, event.y
             self.canvas.create_text(x, y, text="+", fill="#FF5F1F", font=("Arial", 20, "bold"))
             
-            # Normalize and save
+            # Normalize tracking coordinate data
             self.user_coords.append([x/self.canvas.winfo_width(), y/self.canvas.winfo_height()])
             self.btn_step.configure(state="normal")
 
     def next_logic_step(self):
-        if not self.engine.centroids:
+        # Fix: Using isinstance check instead of direct 'if not array:' to prevent ambiguity errors
+        if not isinstance(self.engine.centroids, np.ndarray):
             self.engine.centroids = np.array(self.user_coords)
         
         self.engine.step_calculate_clusters()
         self.refresh_canvas()
         self.engine.step_move_centroids()
         
+        # Update Stats Panel data
+        self.iteration_count += 1
         score = self.engine.calculate_wcss()
         self.score_label.configure(text=f"Score: {score:.2f}")
+        self.iter_label.configure(text=f"Iteration: {self.iteration_count}")
 
     def refresh_canvas(self):
         self.canvas.delete("all")
