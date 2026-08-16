@@ -11,7 +11,7 @@ class GSAIApp(ctk.CTk):
         super().__init__()
 
         self.title("GSAI - Gamified Skill Acquisition Interface")
-        self.geometry("1100x710") # Expanded to fit export actions neatly
+        self.geometry("1100x710")
 
         # Track parameters and stats
         self.iteration_count = 0
@@ -50,7 +50,7 @@ class GSAIApp(ctk.CTk):
         self.btn_optimal = ctk.CTkButton(self.sidebar, text="4. Show Optimal Solution", fg_color="#0e6251", hover_color="#117a65", state="disabled", command=self.toggle_optimal_solution)
         self.btn_optimal.pack(pady=10, padx=20)
 
-        # NEW: Export Metrics Data Button
+        # Export Metrics Data Button
         self.btn_export = ctk.CTkButton(self.sidebar, text="5. Export Session Metrics", fg_color="#512e5f", hover_color="#6c3483", state="disabled", command=self.export_session_data)
         self.btn_export.pack(pady=10, padx=20)
 
@@ -80,10 +80,11 @@ class GSAIApp(ctk.CTk):
         self.reset_interface()
 
     def draw_points(self):
+        """Loads raw initial points as neutral white (#FFFFFF)"""
         self.reset_interface()
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
         for p in self.engine.points:
-            self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill="#39FF14", outline="")
+            self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill="#FFFFFF", outline="")
 
     def handle_click(self, event):
         if len(self.user_coords) < self.k_value:
@@ -132,12 +133,11 @@ class GSAIApp(ctk.CTk):
             self.status_label.configure(text="Status: CONVERGED (Done!)", text_color="#39FF14")
             self.iter_label.configure(text_color="#39FF14")
             self.btn_step.configure(state="disabled")
-            self.btn_export.configure(state="normal")  # NEW: Unlock file export on safe convergence
+            self.btn_export.configure(state="normal")
         else:
             self.status_label.configure(text="Running Calculations...", text_color="#1F51FF")
 
     def export_session_data(self):
-        """NEW: Generates an analytical metrics report file for thesis logging"""
         if not self.is_converged:
             return
             
@@ -148,9 +148,7 @@ class GSAIApp(ctk.CTk):
         user_score = self.engine.calculate_wcss()
         opt_score = self.engine.get_optimal_wcss(self.k_value)
         
-        # Skill acquisition calculation: how close is the user's manual optimization to the absolute machine minimum?
         accuracy = min(100.0, (opt_score / user_score) * 100) if user_score > 0 else 0
-        
         labels = self.engine.get_cluster_labels()
         
         with open(filename, "w") as f:
@@ -172,23 +170,28 @@ class GSAIApp(ctk.CTk):
 
     def refresh_canvas(self):
         self.canvas.delete("all")
-        colors = ["#FF3131", "#1F51FF", "#BC13FE", "#FFF01F", "#00FFFF"]
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
 
-        labels = self.engine.get_cluster_labels()
+        # Dynamically fetch synced labels and exact color codes
+        labels, colors = self.engine.get_cluster_labels_and_colors()
 
+        # Draw Points (using cluster color matched to label)
         for i, p in enumerate(self.engine.points):
             c_idx = self.engine.clusters[i]
-            color = colors[c_idx % len(colors)]
-            self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill=color, outline="")
+            point_color = colors[c_idx] if c_idx < len(colors) else "#FFFFFF"
+            self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill=point_color, outline="")
 
+        # Draw Centroids & Labels (matched colors)
         for idx, c in enumerate(self.engine.centroids):
             cx, cy = c[0]*w, c[1]*h
+            c_color = colors[idx] if idx < len(colors) else "#FFFFFF"
+            lbl_text = labels[idx] if idx < len(labels) else ""
+            
+            # Draw centroid cross marker
             self.canvas.create_text(cx, cy, text="+", fill="white", font=("Arial", 22, "bold"))
             
-            lbl_text = labels[idx]
-            lbl_color = "#39FF14" if "Normal" in lbl_text else "#FF3131"
-            self.canvas.create_text(cx + 15, cy - 15, text=lbl_text, fill=lbl_color, font=("Arial", 11, "bold"), anchor="w")
+            # Draw synchronized text label
+            self.canvas.create_text(cx + 15, cy - 15, text=lbl_text, fill=c_color, font=("Arial", 11, "bold"), anchor="w")
 
         if self.show_optimal:
             opt_centroids = self.engine.get_optimal_centroids(self.k_value)
@@ -211,14 +214,14 @@ class GSAIApp(ctk.CTk):
         
         self.btn_step.configure(state="disabled")
         self.btn_optimal.configure(text="4. Show Optimal Solution", fg_color="#0e6251", hover_color="#117a65", state="disabled")
-        self.btn_export.configure(state="disabled") # Re-lock export on reset
+        self.btn_export.configure(state="disabled")
         self.k_slider.configure(state="normal")
         
         self.canvas.delete("all")
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
         if len(self.engine.points) > 0:
             for p in self.engine.points:
-                self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill="#39FF14", outline="")
+                self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill="#FFFFFF", outline="")
 
 if __name__ == "__main__":
     app = GSAIApp()

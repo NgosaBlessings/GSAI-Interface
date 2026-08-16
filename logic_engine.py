@@ -42,11 +42,16 @@ class GSAILogic:
         has_converged = np.allclose(old_centroids, new_centroids, atol=1e-6)
         return has_converged
 
-    def get_cluster_labels(self):
-        """Analyzes the network logs inside each cluster and returns the majority security tag"""
+    def get_cluster_labels_and_colors(self):
+        """
+        Analyzes network logs inside each cluster and returns matching pair:
+        (List of String Labels, List of Hex Color Codes)
+        """
         cluster_tags = []
-        if len(self.clusters) == 0:
-            return ["Unassigned"] * len(self.centroids)
+        cluster_colors = []
+        
+        if len(self.clusters) == 0 or len(self.centroids) == 0:
+            return ["Unassigned"] * len(self.centroids), ["#FFFFFF"] * len(self.centroids)
             
         for i in range(len(self.centroids)):
             points_in_cluster = self.labels[self.clusters == i]
@@ -55,12 +60,19 @@ class GSAILogic:
                 majority_label = Counter(points_in_cluster).most_common(1)[0][0]
                 if majority_label == 'normal':
                     cluster_tags.append("Normal Traffic")
+                    cluster_colors.append("#39FF14")  # Neon Green for safe traffic
                 else:
                     cluster_tags.append(f"Attack ({majority_label.upper()})")
+                    cluster_colors.append("#FF3131")  # Bright Red for attacks
             else:
                 cluster_tags.append("Empty Cluster")
+                cluster_colors.append("#888888")      # Muted Gray for empty
                 
-        return cluster_tags
+        return cluster_tags, cluster_colors
+
+    def get_cluster_labels(self):
+        tags, _ = self.get_cluster_labels_and_colors()
+        return tags
 
     def get_optimal_centroids(self, k):
         """Uses scikit-learn to solve the absolute mathematical best positions instantly"""
