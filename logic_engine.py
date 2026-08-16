@@ -1,100 +1,183 @@
-import pandas as pd
 import numpy as np
-from collections import Counter
+import pandas as pd
 from sklearn.cluster import KMeans
 
 class GSAILogic:
-    def __init__(self, file_path):
-        # Load and prepare data
-        self.df = pd.read_csv(file_path, header=None)
+    def __init__(self, dataset_path):
+        self.dataset_path = dataset_path
+        self.raw_df = None
+        self.points = []
+        self.point_labels = []
+        self.centroids = []
+        self.clusters = []
+        self.current_level = 1
         
-        # Pull coordinates for visualization (source bytes and dest bytes)
-        self.points = np.log1p(self.df.iloc[:500, [4, 5]].values) 
+        # Load raw dataset
+        self.load_raw_data()
         
-        # Secure the ground-truth classification labels from column index 41
-        self.labels = self.df.iloc[:500, 41].values
+        # Initialize default level data (Level 1)
+        self.load_level(1)
+
+    def load_raw_data(self):
+        """Loads NSL-KDD dataset with proper column headers."""
+        columns = [
+            'duration', 'protocol_type', 'service', 'flag', 'src_bytes',
+            'dst_bytes', 'land', 'wrong_fragment', 'urgent', 'hot',
+            'num_failed_logins', 'logged_in', 'num_compromised', 'root_shell',
+            'su_attempted', 'num_root', 'num_file_creations', 'num_shells',
+            'num_access_files', 'num_outbound_cmds', 'is_host_login',
+            'is_guest_login', 'count', 'srv_count', 'serror_rate',
+            'srv_serror_rate', 'rerror_rate', 'srv_rerror_rate',
+            'same_srv_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+            'dst_host_count', 'dst_host_srv_count', 'dst_host_same_srv_rate',
+            'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
+            'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
+            'dst_host_srv_serror_rate', 'dst_host_rerror_rate',
+            'dst_host_srv_rerror_rate', 'attack_class', 'difficulty'
+        ]
         
-        # Normalize logged data to 0.15 - 0.85 to give padding from the canvas walls
-        p_min = self.points.min(axis=0)
-        p_max = self.points.max(axis=0)
+        try:
+            self.raw_df = pd.read_csv(self.dataset_path, names=columns, header=None)
+        except Exception as e:
+            print(f"Error loading dataset: {e}")
+            self.raw_df = pd.DataFrame()
+
+    def load_level(self, level_num):
+        """Filters dataset for specific attack categories based on level selected."""
+        self.current_level = level_num
         
-        range_denom = np.where((p_max - p_min) == 0, 1, p_max - p_min)
-        self.points = 0.15 + 0.7 * (self.points - p_min) / range_denom
+        level_profiles = {
+            1: ['normal', 'neptune'],
+            2: ['normal', 'neptune', 'back'],
+            3: ['normal', 'portsweep', 'neptune'],
+            4: ['normal', 'neptune', 'smurf', 'satan'],
+            5: ['normal', 'neptune', 'satan', 'warezclient', 'teardrop']
+        }
         
+        classes = level_profiles.get(level_num, level_profiles[1])
+        
+        # Filter dataframe for target attack classes
+        filtered_df = self.raw_df[self.raw_df['attack_class'].isin(classes)].copy()
+        
+        # Sample points per class to balance visualization on canvas
+        sampled_frames = []
+        for c in classes:
+            c_df = filtered_df[filtered_df['attack_class'] == c]
+            sample_size = min(len(c_df), 120 if c == 'normal' else 70)
+            if sample_size > 0:
+                sampled_frames.append(c_df.sample(n=sample_size, random_state=42 + level_num))
+                
+        if sampled_frames:
+            df_subset = pd.concat(sampled_frames).sample(frac=1, random_state=42).reset_index(drop=True)
+        else:
+            df_subset = filtered_df.sample(n=min(len(filtered_df), 300), random_state=42).reset_index(drop=True)
+
+        # Log transform continuous network traffic features for 2D spatial mapping
+        x_raw = np.log1p(df_subset['src_bytes'].values.astype(float))
+        y_raw = np.log1p(df_subset['count'].values.astype(float))
+
+        # Min-Max Normalization to fit [0.05, 0.95] canvas boundaries
+        x_min, x_max = x_raw.min(), x_raw.max()
+        y_min, y_max = y_raw.min(), y_raw.max()
+        
+        norm_x = 0.05 + 0.90 * ((x_raw - x_min) / (x_max - x_min + 1e-6))
+        norm_y = 0.05 + 0.90 * ((y_raw - y_min) / (y_max - y_min + 1e-6))
+
+        # Store normalized (X, Y) points and corresponding labels
+        self.points = np.column_stack((norm_x, norm_y))
+        self.point_labels = df_subset['attack_class'].tolist()
+        
+        # Reset cluster tracking arrays
         self.centroids = []
         self.clusters = []
 
     def step_calculate_clusters(self):
-        """Phase 1: Assign each point to the nearest centroid"""
-        distances = np.linalg.norm(self.points[:, np.newaxis] - self.centroids, axis=2)
+        """Assigns each point to the nearest centroid."""
+        if len(self.centroids) == 0:
+            return
+            
+        distances = np.linalg.norm(self.points[:, np.newaxis] - np.array(self.centroids), axis=2)
         self.clusters = np.argmin(distances, axis=1)
-        return self.clusters
 
     def step_move_centroids(self):
-        """Phase 2: Move centroids to the mean of their clusters and check for convergence"""
-        old_centroids = self.centroids.copy()
-        
-        new_centroids = np.array([self.points[self.clusters == i].mean(axis=0) 
-                                 if len(self.points[self.clusters == i]) > 0 else self.centroids[i]
-                                 for i in range(len(self.centroids))])
-        self.centroids = new_centroids
-        
-        has_converged = np.allclose(old_centroids, new_centroids, atol=1e-6)
-        return has_converged
-
-    def get_cluster_labels_and_colors(self):
-        """
-        Analyzes network logs inside each cluster and returns matching pair:
-        (List of String Labels, List of Hex Color Codes)
-        """
-        cluster_tags = []
-        cluster_colors = []
-        
-        if len(self.clusters) == 0 or len(self.centroids) == 0:
-            return ["Unassigned"] * len(self.centroids), ["#FFFFFF"] * len(self.centroids)
+        """Recalculates centroid coordinates based on mean of assigned points."""
+        if len(self.clusters) == 0:
+            return False
             
+        new_centroids = []
         for i in range(len(self.centroids)):
-            points_in_cluster = self.labels[self.clusters == i]
-            
-            if len(points_in_cluster) > 0:
-                majority_label = Counter(points_in_cluster).most_common(1)[0][0]
-                if majority_label == 'normal':
-                    cluster_tags.append("Normal Traffic")
-                    cluster_colors.append("#39FF14")  # Neon Green for safe traffic
-                else:
-                    cluster_tags.append(f"Attack ({majority_label.upper()})")
-                    cluster_colors.append("#FF3131")  # Bright Red for attacks
+            assigned_points = self.points[self.clusters == i]
+            if len(assigned_points) > 0:
+                new_centroids.append(assigned_points.mean(axis=0))
             else:
-                cluster_tags.append("Empty Cluster")
-                cluster_colors.append("#888888")      # Muted Gray for empty
+                new_centroids.append(self.centroids[i])
                 
-        return cluster_tags, cluster_colors
-
-    def get_cluster_labels(self):
-        tags, _ = self.get_cluster_labels_and_colors()
-        return tags
-
-    def get_optimal_centroids(self, k):
-        """Uses scikit-learn to solve the absolute mathematical best positions instantly"""
-        kmeans_model = KMeans(n_clusters=k, init='k-means++', n_init=10, max_iter=300, random_state=42)
-        kmeans_model.fit(self.points)
-        return kmeans_model.cluster_centers_
-
-    def get_optimal_wcss(self, k):
-        """Calculates scikit-learn's absolute best score benchmark for performance comparison"""
-        kmeans_model = KMeans(n_clusters=k, init='k-means++', n_init=10, max_iter=300, random_state=42)
-        kmeans_model.fit(self.points)
-        return kmeans_model.inertia_
+        new_centroids = np.array(new_centroids)
+        
+        # Check convergence (movement threshold < 1e-4)
+        diff = np.linalg.norm(self.centroids - new_centroids)
+        self.centroids = new_centroids
+        return diff < 1e-4
 
     def calculate_wcss(self):
-        """Calculate the 'Game Score' (Inertia) with empty-cluster safety handles"""
-        score = 0
-        for i, c in enumerate(self.centroids):
-            cluster_points = self.points[self.clusters == i]
-            if len(cluster_points) > 0:
-                score += np.sum((cluster_points - c)**2)
-        return score
+        """Calculates Within-Cluster Sum of Squares score."""
+        if len(self.clusters) == 0 or len(self.centroids) == 0:
+            return 0.0
+        
+        wcss = 0.0
+        for i, p in enumerate(self.points):
+            c_idx = self.clusters[i]
+            centroid = self.centroids[c_idx]
+            wcss += np.sum((p - centroid) ** 2)
+        return float(wcss)
 
-if __name__ == "__main__":
-    engine = GSAILogic('data/KDDTrain+_20Percent.txt')
-    print("Engine configured successfully.")
+    def get_cluster_labels_and_colors(self):
+        """Maps majority attack class and color scheme to active clusters."""
+        if len(self.clusters) == 0 or len(self.centroids) == 0:
+            return [], []
+            
+        labels = []
+        colors = []
+        
+        palette = ["#FF3366", "#33CCFF", "#FFCC00", "#9966FF", "#FF9933"]
+        
+        for i in range(len(self.centroids)):
+            assigned_indices = np.where(self.clusters == i)[0]
+            if len(assigned_indices) > 0:
+                cluster_classes = [self.point_labels[idx] for idx in assigned_indices]
+                majority_class = max(set(cluster_classes), key=cluster_classes.count)
+                
+                if majority_class == "normal":
+                    lbl = "Normal Traffic"
+                    col = "#39FF14"  # Bright Green
+                else:
+                    lbl = f"Attack ({majority_class.upper()})"
+                    col = palette[i % len(palette)]
+            else:
+                lbl = "Empty Cluster"
+                col = "#888888"
+                
+            labels.append(lbl)
+            colors.append(col)
+            
+        return labels, colors
+
+    def get_cluster_labels(self):
+        labels, _ = self.get_cluster_labels_and_colors()
+        return labels
+
+    def get_optimal_centroids(self, k):
+        """Computes ground truth optimal centroids using scikit-learn KMeans."""
+        if len(self.points) == 0:
+            return []
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans.fit(self.points)
+        return kmeans.cluster_centers_
+
+    def get_optimal_wcss(self, k):
+        """Returns optimal WCSS inertia for scoring comparisons."""
+        if len(self.points) == 0:
+            return 0.0
+        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
+        kmeans.fit(self.points)
+        return float(kmeans.inertia_)
