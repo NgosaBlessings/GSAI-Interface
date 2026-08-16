@@ -36,23 +36,27 @@ class GSAIApp(ctk.CTk):
         
         self.k_slider = ctk.CTkSlider(self.sidebar, from_=2, to=5, number_of_steps=3, command=self.change_k_value)
         self.k_slider.set(self.k_value)
-        self.k_slider.pack(pady=(5, 15), padx=20)
+        self.k_slider.pack(pady=(5, 10), padx=20)
+
+        # Tutorial / User Guide Button
+        self.btn_guide = ctk.CTkButton(self.sidebar, text="📖 How to Use / Guide", fg_color="#1f618d", hover_color="#154360", command=self.show_tutorial)
+        self.btn_guide.pack(pady=(0, 10), padx=20)
 
         self.btn_init = ctk.CTkButton(self.sidebar, text="1. Initialize Points", command=self.draw_points)
-        self.btn_init.pack(pady=10, padx=20)
+        self.btn_init.pack(pady=8, padx=20)
 
         self.btn_step = ctk.CTkButton(self.sidebar, text="2. Next Step", state="disabled", command=self.next_logic_step)
-        self.btn_step.pack(pady=10, padx=20)
+        self.btn_step.pack(pady=8, padx=20)
 
         self.btn_reset = ctk.CTkButton(self.sidebar, text="3. Reset Engine", fg_color="#721c24", hover_color="#a93226", command=self.reset_interface)
-        self.btn_reset.pack(pady=10, padx=20)
+        self.btn_reset.pack(pady=8, padx=20)
 
         self.btn_optimal = ctk.CTkButton(self.sidebar, text="4. Show Optimal Solution", fg_color="#0e6251", hover_color="#117a65", state="disabled", command=self.toggle_optimal_solution)
-        self.btn_optimal.pack(pady=10, padx=20)
+        self.btn_optimal.pack(pady=8, padx=20)
 
         # Export Metrics Data Button
         self.btn_export = ctk.CTkButton(self.sidebar, text="5. Export Session Metrics", fg_color="#512e5f", hover_color="#6c3483", state="disabled", command=self.export_session_data)
-        self.btn_export.pack(pady=10, padx=20)
+        self.btn_export.pack(pady=8, padx=20)
 
         # Stats Labels
         self.score_label = ctk.CTkLabel(self.sidebar, text="Score: 0.00", font=("Arial", 14))
@@ -78,6 +82,60 @@ class GSAIApp(ctk.CTk):
         self.k_value = int(value)
         self.k_label.configure(text=f"Target Clusters (K): {self.k_value}")
         self.reset_interface()
+
+    def show_convergence_popup(self):
+        """Displays a clean auto-closing toast popup when convergence is reached"""
+        popup = ctk.CTkToplevel(self)
+        popup.title("")
+        popup.geometry("380x130")
+        popup.resizable(False, False)
+        popup.attributes("-topmost", True)
+        
+        # Center popup over main app window
+        app_x = self.winfo_x() + (self.winfo_width() // 2) - 190
+        app_y = self.winfo_y() + (self.winfo_height() // 2) - 65
+        popup.geometry(f"+{app_x}+{app_y}")
+
+        frame = ctk.CTkFrame(popup, fg_color="#1c2833", border_color="#27ae60", border_width=2)
+        frame.pack(fill="both", expand=True, padx=5, pady=5)
+
+        ctk.CTkLabel(frame, text="🎉 Convergence Reached!", font=("Arial", 16, "bold"), text_color="#27ae60").pack(pady=(20, 5))
+        ctk.CTkLabel(frame, text="Centroids have stabilized. Algorithm complete.", font=("Arial", 12), text_color="#ecf0f1").pack()
+        ctk.CTkLabel(frame, text="(This window closes automatically in 3 seconds)", font=("Arial", 10, "italic"), text_color="#85929e").pack(pady=(5, 0))
+
+        # Auto close after 3000ms (3 seconds)
+        self.after(3000, popup.destroy)
+
+    def show_tutorial(self):
+        """Opens a modal guiding new users through the steps"""
+        guide = ctk.CTkToplevel(self)
+        guide.title("GSAI Interface Guide")
+        guide.geometry("520x420")
+        guide.resizable(False, False)
+        guide.attributes("-topmost", True)
+
+        app_x = self.winfo_x() + (self.winfo_width() // 2) - 260
+        app_y = self.winfo_y() + (self.winfo_height() // 2) - 210
+        guide.geometry(f"+{app_x}+{app_y}")
+
+        frame = ctk.CTkFrame(guide, fg_color="#1a1a1a")
+        frame.pack(fill="both", expand=True, padx=15, pady=15)
+
+        ctk.CTkLabel(frame, text="How to Use GSAI", font=("Arial", 18, "bold"), text_color="#00FFFF").pack(pady=(10, 15))
+
+        guide_steps = [
+            "1. Select Target Clusters (K) using the slider.",
+            "2. Click '1. Initialize Points' to display the network logs.",
+            "3. Click directly on the black canvas area to place your K '+' centroids.",
+            "4. Click '2. Next Step' repeatedly to watch the clusters form and iterate.",
+            "5. Stop when convergence is reached! Compare with 'Show Optimal Solution'.",
+            "6. Click '5. Export Session Metrics' to save your results to CSV."
+        ]
+
+        for step in guide_steps:
+            ctk.CTkLabel(frame, text=step, font=("Arial", 12), anchor="w", justify="left").pack(fill="x", padx=15, pady=5)
+
+        ctk.CTkButton(frame, text="Got It!", fg_color="#27ae60", hover_color="#1e8449", command=guide.destroy).pack(pady=20)
 
     def draw_points(self):
         """Loads raw initial points as neutral white (#FFFFFF)"""
@@ -134,6 +192,9 @@ class GSAIApp(ctk.CTk):
             self.iter_label.configure(text_color="#39FF14")
             self.btn_step.configure(state="disabled")
             self.btn_export.configure(state="normal")
+            
+            # Trigger auto-closing popup
+            self.show_convergence_popup()
         else:
             self.status_label.configure(text="Running Calculations...", text_color="#1F51FF")
 
@@ -172,25 +233,21 @@ class GSAIApp(ctk.CTk):
         self.canvas.delete("all")
         w, h = self.canvas.winfo_width(), self.canvas.winfo_height()
 
-        # Dynamically fetch synced labels and exact color codes
         labels, colors = self.engine.get_cluster_labels_and_colors()
 
-        # Draw Points (using cluster color matched to label)
+        # Draw Points
         for i, p in enumerate(self.engine.points):
             c_idx = self.engine.clusters[i]
             point_color = colors[c_idx] if c_idx < len(colors) else "#FFFFFF"
             self.canvas.create_oval(p[0]*w-2, p[1]*h-2, p[0]*w+2, p[1]*h+2, fill=point_color, outline="")
 
-        # Draw Centroids & Labels (matched colors)
+        # Draw Centroids & Labels
         for idx, c in enumerate(self.engine.centroids):
             cx, cy = c[0]*w, c[1]*h
             c_color = colors[idx] if idx < len(colors) else "#FFFFFF"
             lbl_text = labels[idx] if idx < len(labels) else ""
             
-            # Draw centroid cross marker
             self.canvas.create_text(cx, cy, text="+", fill="white", font=("Arial", 22, "bold"))
-            
-            # Draw synchronized text label
             self.canvas.create_text(cx + 15, cy - 15, text=lbl_text, fill=c_color, font=("Arial", 11, "bold"), anchor="w")
 
         if self.show_optimal:
