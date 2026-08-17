@@ -14,7 +14,8 @@ class DecisionTreeModule(ctk.CTkToplevel):
     super().__init__(parent)
 
     self.title("GSAI - Module 2: Decision Tree Boundary Splitting")
-    self.geometry("1180x740")
+    self.geometry("1200x750")
+    self.minsize(1100, 700)
 
     # Current Level State (1, 2, or 3)
     self.current_level = 1
@@ -24,7 +25,8 @@ class DecisionTreeModule(ctk.CTkToplevel):
     # Generate Initial Dataset for Level 1
     self._load_level_dataset(1)
 
-    # Layout Setup
+    # Layout Setup - Enforce strict grid column weighting
+    self.grid_columnconfigure(0, weight=0, minsize=320)
     self.grid_columnconfigure(1, weight=1)
     self.grid_rowconfigure(0, weight=1)
 
@@ -81,12 +83,12 @@ class DecisionTreeModule(ctk.CTkToplevel):
     """Launches the instructional modal dialog on startup."""
     modal = ctk.CTkToplevel(self)
     modal.title("Module Instructions - Decision Tree Splitting")
-    modal.geometry("540x440")
+    modal.geometry("540x480")
     modal.resizable(False, False)
     modal.transient(self)
     modal.grab_set()
 
-    m_frame = ctk.CTkFrame(modal, corner_radius=12)
+    m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
     m_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
     title = ctk.CTkLabel(
@@ -116,9 +118,10 @@ class DecisionTreeModule(ctk.CTkToplevel):
         m_frame,
         text=instructions,
         font=ctk.CTkFont(size=12),
+        text_color="#E5E7EB",
         justify="left",
         anchor="w",
-        wraplength=480,
+        wraplength=460,
     )
     lbl_info.pack(padx=20, pady=10, fill="x")
 
@@ -135,34 +138,40 @@ class DecisionTreeModule(ctk.CTkToplevel):
     btn_start.pack(pady=(10, 15))
 
   def _build_sidebar(self):
-    """Left Control Sidebar."""
-    self.sidebar = ctk.CTkFrame(self, width=340, corner_radius=0)
+    """Left Control Sidebar with fixed geometry propagation."""
+    self.sidebar = ctk.CTkFrame(self, width=320, corner_radius=0)
     self.sidebar.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+    self.sidebar.grid_propagate(False)  # Prevents sidebar resizing during updates
 
     title = ctk.CTkLabel(
         self.sidebar,
         text="Module 2: Decision Tree",
         font=ctk.CTkFont(size=20, weight="bold"),
         text_color="#FF9800",
+        width=290,
+        anchor="w",
     )
-    title.pack(pady=(15, 2), padx=15, anchor="w")
+    title.pack(pady=(15, 2), padx=15)
 
     subtitle = ctk.CTkLabel(
         self.sidebar,
         text="Axis-Parallel Feature Space Partitioning",
-        font=ctk.CTkFont(size=12, slant="italic"),
+        font=ctk.CTkFont(size=11, slant="italic"),
         text_color="#A0A0A0",
+        width=290,
+        anchor="w",
     )
-    subtitle.pack(pady=(0, 10), padx=15, anchor="w")
+    subtitle.pack(pady=(0, 10), padx=15)
 
     # Level Selector Buttons
-    level_frame = ctk.CTkFrame(self.sidebar)
+    level_frame = ctk.CTkFrame(self.sidebar, width=290)
     level_frame.pack(fill="x", padx=15, pady=5)
 
     lbl_lvl = ctk.CTkLabel(
         level_frame,
         text="Select Level Challenge:",
         font=ctk.CTkFont(size=12, weight="bold"),
+        text_color="#FFFFFF",
     )
     lbl_lvl.pack(anchor="w", padx=10, pady=(5, 2))
 
@@ -172,39 +181,42 @@ class DecisionTreeModule(ctk.CTkToplevel):
     self.btn_l1 = ctk.CTkButton(
         btn_box,
         text="L1",
-        width=45,
+        width=75,
         fg_color="#FF9800",
         text_color="#000000",
         command=lambda: self._select_level(1),
     )
-    self.btn_l1.pack(side="left", padx=5)
+    self.btn_l1.pack(side="left", padx=5, expand=True)
 
     self.btn_l2 = ctk.CTkButton(
         btn_box,
         text="L2",
-        width=45,
+        width=75,
         fg_color="#374151",
+        text_color="#FFFFFF",
         command=lambda: self._select_level(2),
     )
-    self.btn_l2.pack(side="left", padx=5)
+    self.btn_l2.pack(side="left", padx=5, expand=True)
 
     self.btn_l3 = ctk.CTkButton(
         btn_box,
         text="L3",
-        width=45,
+        width=75,
         fg_color="#374151",
+        text_color="#FFFFFF",
         command=lambda: self._select_level(3),
     )
-    self.btn_l3.pack(side="left", padx=5)
+    self.btn_l3.pack(side="left", padx=5, expand=True)
 
     # Controls Box
-    controls_frame = ctk.CTkFrame(self.sidebar)
+    controls_frame = ctk.CTkFrame(self.sidebar, width=290)
     controls_frame.pack(fill="x", padx=15, pady=8)
 
     lbl_v = ctk.CTkLabel(
         controls_frame,
         text="Vertical Boundary (X Split):",
-        font=ctk.CTkFont(size=13, weight="bold"),
+        font=ctk.CTkFont(size=12, weight="bold"),
+        text_color="#FFFFFF",
     )
     lbl_v.pack(anchor="w", padx=10, pady=(8, 2))
 
@@ -221,7 +233,8 @@ class DecisionTreeModule(ctk.CTkToplevel):
     lbl_h = ctk.CTkLabel(
         controls_frame,
         text="Horizontal Boundary (Y Split):",
-        font=ctk.CTkFont(size=13, weight="bold"),
+        font=ctk.CTkFont(size=12, weight="bold"),
+        text_color="#FFFFFF",
     )
     lbl_h.pack(anchor="w", padx=10, pady=(4, 2))
 
@@ -235,19 +248,26 @@ class DecisionTreeModule(ctk.CTkToplevel):
     self.slider_h.set(self.h_split)
     self.slider_h.pack(fill="x", padx=10, pady=(0, 10))
 
-    # Telemetry Card
+    # Telemetry Card with Fixed Dimensions
     self.telemetry_card = ctk.CTkFrame(
-        self.sidebar, fg_color="#1E293B", border_width=1, border_color="#00E5FF"
+        self.sidebar,
+        width=290,
+        height=75,
+        fg_color="#1E293B",
+        border_width=1,
+        border_color="#00E5FF",
     )
     self.telemetry_card.pack(fill="x", padx=15, pady=6)
+    self.telemetry_card.pack_propagate(False)
 
     self.lbl_gini = ctk.CTkLabel(
         self.telemetry_card,
         text="2D Weighted Gini Impurity:\n0.00",
-        font=ctk.CTkFont(size=13, weight="bold"),
+        font=ctk.CTkFont(size=12, weight="bold"),
         text_color="#00E5FF",
+        width=280,
     )
-    self.lbl_gini.pack(pady=8)
+    self.lbl_gini.pack(expand=True, fill="both", pady=4)
 
     # Complete Level Button
     self.btn_complete = ctk.CTkButton(
@@ -262,8 +282,8 @@ class DecisionTreeModule(ctk.CTkToplevel):
     )
     self.btn_complete.pack(fill="x", padx=15, pady=6)
 
-    # Dynamic Tree Visualizer Card
-    tree_card = ctk.CTkFrame(self.sidebar, fg_color="#111827")
+    # Dynamic Tree Visualizer Card with explicit width
+    tree_card = ctk.CTkFrame(self.sidebar, width=290, fg_color="#111827")
     tree_card.pack(fill="both", expand=True, padx=15, pady=(0, 10))
 
     lbl_tree_header = ctk.CTkLabel(
@@ -271,15 +291,18 @@ class DecisionTreeModule(ctk.CTkToplevel):
         text="Generated NIDS Rule Tree:",
         font=ctk.CTkFont(size=12, weight="bold"),
         text_color="#FF9800",
+        anchor="w",
     )
-    lbl_tree_header.pack(anchor="w", padx=10, pady=(6, 2))
+    lbl_tree_header.pack(fill="x", padx=10, pady=(6, 2))
 
     self.lbl_rules = ctk.CTkLabel(
         tree_card,
         text="",
         font=ctk.CTkFont(family="Courier", size=10),
+        text_color="#D1D5DB",
         justify="left",
         anchor="nw",
+        wraplength=270,
     )
     self.lbl_rules.pack(fill="both", expand=True, padx=10, pady=4)
 
@@ -460,12 +483,13 @@ class DecisionTreeModule(ctk.CTkToplevel):
 
     modal = ctk.CTkToplevel(self)
     modal.title(f"Level {self.current_level} Completion Assessment")
-    modal.geometry("560x480")
+    modal.geometry("580x520")
     modal.resizable(False, False)
     modal.transient(self)
     modal.grab_set()
 
-    m_frame = ctk.CTkFrame(modal, corner_radius=12)
+    # Explicit modal frame container with high contrast background
+    m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
     m_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
     # SUCCESS OR LEVEL 3 ACCEPTANCE CASE
@@ -492,7 +516,7 @@ class DecisionTreeModule(ctk.CTkToplevel):
               f"Best Gini Achieved: {current_gini:.3f} (Target:"
               f" <= {self.target_gini:.3f})"
           ),
-          font=ctk.CTkFont(size=12, weight="bold"),
+          font=ctk.CTkFont(size=13, weight="bold"),
           text_color="#00E5FF",
       )
       score_lbl.pack(pady=(0, 10))
@@ -545,9 +569,10 @@ class DecisionTreeModule(ctk.CTkToplevel):
           m_frame,
           text=insight,
           font=ctk.CTkFont(size=12),
+          text_color="#E5E7EB",
           justify="left",
           anchor="w",
-          wraplength=480,
+          wraplength=500,
       )
       lbl_insight.pack(padx=20, pady=10, fill="x")
 
@@ -570,6 +595,7 @@ class DecisionTreeModule(ctk.CTkToplevel):
             text="Close & Explore",
             font=ctk.CTkFont(size=14, weight="bold"),
             fg_color="#10B981",
+            hover_color="#059669",
             text_color="#FFFFFF",
             height=38,
             command=modal.destroy,
@@ -596,8 +622,9 @@ class DecisionTreeModule(ctk.CTkToplevel):
           m_frame,
           text=msg,
           font=ctk.CTkFont(size=13),
+          text_color="#E5E7EB",
           justify="center",
-          wraplength=480,
+          wraplength=500,
       )
       lbl_msg.pack(padx=20, pady=20)
 
