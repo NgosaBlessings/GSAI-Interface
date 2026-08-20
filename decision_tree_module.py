@@ -1,6 +1,6 @@
 import customtkinter as ctk
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.pyplot as plt
 import numpy as np
 
 # Set dark appearance
@@ -67,9 +67,7 @@ class DecisionTreeModule(ctk.CTkToplevel):
       self.y_normal = np.random.normal(loc=0.50, scale=0.18, size=150)
       self.x_attack = np.random.normal(loc=0.40, scale=0.15, size=120)
       self.y_attack = np.random.normal(loc=0.40, scale=0.15, size=120)
-      self.target_gini = (
-          0.200  # Strict target forces Impurity score to stay Orange/Red (~0.320)
-      )
+      self.target_gini = 0.200
       self.level_title = "Level 3: Overlapping Feature Noise"
       self.level_desc = "Non-Separability & Overfitting Limits"
 
@@ -85,63 +83,67 @@ class DecisionTreeModule(ctk.CTkToplevel):
     modal.title("Module Instructions - Decision Tree Splitting")
     modal.geometry("540x480")
     modal.resizable(False, False)
+    modal.update_idletasks()
     modal.transient(self)
     modal.grab_set()
 
-    m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
-    m_frame.pack(padx=20, pady=20, fill="both", expand=True)
+    def _render_content():
+      m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
+      m_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-    title = ctk.CTkLabel(
-        m_frame,
-        text="How to Play: Decision Tree Module",
-        font=ctk.CTkFont(size=18, weight="bold"),
-        text_color="#FF9800",
-    )
-    title.pack(pady=(15, 10))
+      title = ctk.CTkLabel(
+          m_frame,
+          text="How to Play: Decision Tree Module",
+          font=ctk.CTkFont(size=18, weight="bold"),
+          text_color="#FF9800",
+      )
+      title.pack(pady=(15, 10))
 
-    instructions = (
-        "1. OBJECTIVE:\n"
-        "   Isolate Normal Traffic (Green) from Attack Traffic (Red) by\n"
-        "   adjusting the Vertical (X) and Horizontal (Y) boundary sliders.\n\n"
-        "2. 2D QUADRANT PARTITIONING:\n"
-        "   Gini Impurity is measured across all 4 quadrants created by\n"
-        "   the intersecting X and Y boundary cuts.\n\n"
-        "3. TARGET SCORE:\n"
-        "   Lower the Weighted Gini score and click 'Complete Level' to unlock\n"
-        "   NIDS theoretical takeaways.\n\n"
-        "4. PROGRESSION:\n"
-        "   Work through Levels 1, 2, and 3 to discover how decision trees\n"
-        "   handle linear separation, compound rules, and noise."
-    )
+      instructions = (
+          "1. OBJECTIVE:\n"
+          "   Isolate Normal Traffic (Green) from Attack Traffic (Red) by\n"
+          "   adjusting the Vertical (X) and Horizontal (Y) boundary sliders.\n\n"
+          "2. 2D QUADRANT PARTITIONING:\n"
+          "   Gini Impurity is measured across all 4 quadrants created by\n"
+          "   the intersecting X and Y boundary cuts.\n\n"
+          "3. TARGET SCORE:\n"
+          "   Lower the Weighted Gini score and click 'Complete Level' to unlock\n"
+          "   NIDS theoretical takeaways.\n\n"
+          "4. PROGRESSION:\n"
+          "   Work through Levels 1, 2, and 3 to discover how decision trees\n"
+          "   handle linear separation, compound rules, and noise."
+      )
 
-    lbl_info = ctk.CTkLabel(
-        m_frame,
-        text=instructions,
-        font=ctk.CTkFont(size=12),
-        text_color="#E5E7EB",
-        justify="left",
-        anchor="w",
-        wraplength=460,
-    )
-    lbl_info.pack(padx=20, pady=10, fill="x")
+      lbl_info = ctk.CTkLabel(
+          m_frame,
+          text=instructions,
+          font=ctk.CTkFont(size=12),
+          text_color="#E5E7EB",
+          justify="left",
+          anchor="w",
+          wraplength=460,
+      )
+      lbl_info.pack(padx=20, pady=10, fill="x")
 
-    btn_start = ctk.CTkButton(
-        m_frame,
-        text="Start Splitting",
-        font=ctk.CTkFont(size=14, weight="bold"),
-        fg_color="#FF9800",
-        hover_color="#E68A00",
-        text_color="#000000",
-        height=40,
-        command=modal.destroy,
-    )
-    btn_start.pack(pady=(10, 15))
+      btn_start = ctk.CTkButton(
+          m_frame,
+          text="Start Splitting",
+          font=ctk.CTkFont(size=14, weight="bold"),
+          fg_color="#FF9800",
+          hover_color="#E68A00",
+          text_color="#000000",
+          height=40,
+          command=modal.destroy,
+      )
+      btn_start.pack(pady=(10, 15))
+
+    modal.after(10, _render_content)
 
   def _build_sidebar(self):
     """Left Control Sidebar with fixed geometry propagation."""
     self.sidebar = ctk.CTkFrame(self, width=320, corner_radius=0)
     self.sidebar.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
-    self.sidebar.grid_propagate(False)  # Prevents sidebar resizing during updates
+    self.sidebar.grid_propagate(False)
 
     title = ctk.CTkLabel(
         self.sidebar,
@@ -248,7 +250,7 @@ class DecisionTreeModule(ctk.CTkToplevel):
     self.slider_h.set(self.h_split)
     self.slider_h.pack(fill="x", padx=10, pady=(0, 10))
 
-    # Telemetry Card with Fixed Dimensions
+    # Telemetry Card
     self.telemetry_card = ctk.CTkFrame(
         self.sidebar,
         width=290,
@@ -282,7 +284,7 @@ class DecisionTreeModule(ctk.CTkToplevel):
     )
     self.btn_complete.pack(fill="x", padx=15, pady=6)
 
-    # Dynamic Tree Visualizer Card with explicit width
+    # Dynamic Tree Visualizer Card
     tree_card = ctk.CTkFrame(self.sidebar, width=290, fg_color="#111827")
     tree_card.pack(fill="both", expand=True, padx=15, pady=(0, 10))
 
@@ -485,160 +487,160 @@ class DecisionTreeModule(ctk.CTkToplevel):
     modal.title(f"Level {self.current_level} Completion Assessment")
     modal.geometry("580x520")
     modal.resizable(False, False)
+
+    # Force geometry rendering before trapping focus
+    modal.update_idletasks()
     modal.transient(self)
     modal.grab_set()
 
-    # Explicit modal frame container with high contrast background
-    m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
-    m_frame.pack(padx=20, pady=20, fill="both", expand=True)
+    # Schedule frame layout rendering after window is realized
+    def _render_modal_body():
+      m_frame = ctk.CTkFrame(modal, corner_radius=12, fg_color="#1E293B")
+      m_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-    # SUCCESS OR LEVEL 3 ACCEPTANCE CASE
-    if current_gini <= self.target_gini or self.current_level == 3:
-      if self.current_level == 3:
+      if current_gini <= self.target_gini or self.current_level == 3:
+        if self.current_level == 3:
+          title = ctk.CTkLabel(
+              m_frame,
+              text="⚠️ Level 3 Assessment: Non-Separability",
+              font=ctk.CTkFont(size=17, weight="bold"),
+              text_color="#FF9800",
+          )
+        else:
+          title = ctk.CTkLabel(
+              m_frame,
+              text=f"🎉 Level {self.current_level} Complete!",
+              font=ctk.CTkFont(size=20, weight="bold"),
+              text_color="#00FF66",
+          )
+        title.pack(pady=(15, 5))
+
+        score_lbl = ctk.CTkLabel(
+            m_frame,
+            text=(
+                f"Best Gini Achieved: {current_gini:.3f} (Target:"
+                f" <= {self.target_gini:.3f})"
+            ),
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#00E5FF",
+        )
+        score_lbl.pack(pady=(0, 10))
+
+        if self.current_level == 1:
+          insight = (
+              "WHAT YOU JUST SAW:\n"
+              "• All red dots were grouped nicely on the left and green dots"
+              " on the right.\n"
+              "• You only needed ONE vertical line to separate good traffic"
+              " from bad traffic.\n\n"
+              "THE BIG TAKEAWAY:\n"
+              "• Massive volumetric attacks (like DoS flooding) stick out like"
+              " a sore thumb.\n"
+              "• A Decision Tree draws a single straight line (IF packet_size"
+              " > threshold) to catch high-impact threats!"
+          )
+        elif self.current_level == 2:
+          insight = (
+              "WHAT YOU JUST SAW:\n"
+              "• A single vertical line was not enough; attack dots formed a"
+              " sub-cluster.\n"
+              "• You used BOTH lines (X and Y) to trap red dots in a bounding"
+              " box.\n\n"
+              "THE BIG TAKEAWAY:\n"
+              "• Sneaky attacks (like Port Scans) attempt to mask behind one"
+              " feature.\n"
+              "• Decision Trees handle multi-condition rules (IF feature_X is"
+              " low AND feature_Y is low) to isolate complex threat signatures."
+          )
+        else:
+          insight = (
+              "WHAT YOU JUST SAW:\n"
+              "• Red and green dots overlap significantly across the feature"
+              " space.\n"
+              "• Axis-parallel splits cannot cleanly separate overlapping"
+              " distributions.\n\n"
+              "THE BIG TAKEAWAY:\n"
+              "• Overfitting Trap: Forcing complex boundary splits on noisy"
+              " data breaks generalizability.\n"
+              "• Real-world NIDS environments require multi-feature ensembles"
+              " like Random Forests or DBSCAN."
+          )
+
+        lbl_insight = ctk.CTkLabel(
+            m_frame,
+            text=insight,
+            font=ctk.CTkFont(size=12),
+            text_color="#E5E7EB",
+            justify="left",
+            anchor="w",
+            wraplength=500,
+        )
+        lbl_insight.pack(padx=20, pady=10, fill="x")
+
+        if self.current_level < 3:
+          next_lvl = self.current_level + 1
+          btn_action = ctk.CTkButton(
+              m_frame,
+              text=f"Proceed to Level {next_lvl}",
+              font=ctk.CTkFont(size=14, weight="bold"),
+              fg_color="#00E5FF",
+              hover_color="#00B3CC",
+              text_color="#000000",
+              height=38,
+              command=lambda: [modal.destroy(), self._select_level(next_lvl)],
+          )
+        else:
+          btn_action = ctk.CTkButton(
+              m_frame,
+              text="Close & Explore",
+              font=ctk.CTkFont(size=14, weight="bold"),
+              fg_color="#10B981",
+              hover_color="#059669",
+              text_color="#FFFFFF",
+              height=38,
+              command=modal.destroy,
+          )
+        btn_action.pack(pady=(10, 15))
+
+      else:
         title = ctk.CTkLabel(
             m_frame,
-            text="⚠️ Level 3 Assessment: Why Can't It Turn Green?",
-            font=ctk.CTkFont(size=17, weight="bold"),
+            text="Target Not Met Yet",
+            font=ctk.CTkFont(size=18, weight="bold"),
             text_color="#FF9800",
         )
-      else:
-        title = ctk.CTkLabel(
+        title.pack(pady=(20, 5))
+
+        msg = (
+            f"Current Gini Score: {current_gini:.3f}\n"
+            f"Required Target: <= {self.target_gini:.3f}\n\n"
+            "Keep adjusting the Vertical (X) and Horizontal (Y) sliders to\n"
+            "better isolate the green and red traffic clusters across"
+            " quadrants!"
+        )
+        lbl_msg = ctk.CTkLabel(
             m_frame,
-            text=f"🎉 Level {self.current_level} Complete!",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#00FF66",
+            text=msg,
+            font=ctk.CTkFont(size=13),
+            text_color="#E5E7EB",
+            justify="center",
+            wraplength=500,
         )
-      title.pack(pady=(15, 5))
+        lbl_msg.pack(padx=20, pady=20)
 
-      score_lbl = ctk.CTkLabel(
-          m_frame,
-          text=(
-              f"Best Gini Achieved: {current_gini:.3f} (Target:"
-              f" <= {self.target_gini:.3f})"
-          ),
-          font=ctk.CTkFont(size=13, weight="bold"),
-          text_color="#00E5FF",
-      )
-      score_lbl.pack(pady=(0, 10))
-
-      # Post-Game Insights Content
-      if self.current_level == 1:
-        insight = (
-            "WHAT YOU JUST SAW:\n"
-            "• All red dots were grouped nicely on the left and green dots on"
-            " the right.\n"
-            "• You only needed ONE vertical line to separate good traffic from"
-            " bad traffic.\n\n"
-            "THE BIG TAKEAWAY:\n"
-            "• Massive volumetric attacks (like DoS flooding) stick out like a"
-            " sore thumb.\n"
-            "• A Decision Tree doesn't waste time—it draws a single straight"
-            " line (IF packet_size > threshold) and instantly catches the"
-            " attack!"
-        )
-      elif self.current_level == 2:
-        insight = (
-            "WHAT YOU JUST SAW:\n"
-            "• A single vertical line wasn't enough this time—the red attack"
-            " dots were hiding down in a specific corner.\n"
-            "• You had to use BOTH lines (X and Y) together to trap the red dots"
-            " inside their own box.\n\n"
-            "THE BIG TAKEAWAY:\n"
-            "• Sneaky attacks (like Port Scans) try to blend in by looking"
-            " normal on one axis.\n"
-            "• Decision Trees solve this by combining rules (IF feature_X is"
-            " low AND feature_Y is low). This cuts the graph into smaller boxes"
-            " to trap sneaky threats!"
-        )
-      else:
-        insight = (
-            "WHAT YOU JUST SAW:\n"
-            "• The red and green dots are completely mixed together! No matter"
-            " where you move the lines, you always catch some green dots with"
-            " the red ones.\n\n"
-            "THE BIG TAKEAWAY:\n"
-            "• Real-world network data is messy. Attackers intentionally hide"
-            " inside normal traffic patterns.\n"
-            "• The Overfitting Trap: If you try to force straight lines to"
-            " perfectly separate mixed dots, your rules become overly"
-            " complicated and break on new data. Non-separable data requires"
-            " extra features or Random Forests!"
-        )
-
-      lbl_insight = ctk.CTkLabel(
-          m_frame,
-          text=insight,
-          font=ctk.CTkFont(size=12),
-          text_color="#E5E7EB",
-          justify="left",
-          anchor="w",
-          wraplength=500,
-      )
-      lbl_insight.pack(padx=20, pady=10, fill="x")
-
-      # Action Button
-      if self.current_level < 3:
-        next_lvl = self.current_level + 1
-        btn_action = ctk.CTkButton(
+        btn_retry = ctk.CTkButton(
             m_frame,
-            text=f"Proceed to Level {next_lvl}",
+            text="Keep Tweaking Sliders",
             font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color="#00E5FF",
-            hover_color="#00B3CC",
+            fg_color="#FF9800",
+            hover_color="#E68A00",
             text_color="#000000",
-            height=38,
-            command=lambda: [modal.destroy(), self._select_level(next_lvl)],
-        )
-      else:
-        btn_action = ctk.CTkButton(
-            m_frame,
-            text="Close & Explore",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color="#10B981",
-            hover_color="#059669",
-            text_color="#FFFFFF",
             height=38,
             command=modal.destroy,
         )
-      btn_action.pack(pady=(10, 15))
+        btn_retry.pack(pady=(10, 15))
 
-    else:
-      # RETRY CASE FOR L1 / L2
-      title = ctk.CTkLabel(
-          m_frame,
-          text="Target Not Met Yet",
-          font=ctk.CTkFont(size=18, weight="bold"),
-          text_color="#FF9800",
-      )
-      title.pack(pady=(20, 5))
-
-      msg = (
-          f"Current Gini Score: {current_gini:.3f}\n"
-          f"Required Target: <= {self.target_gini:.3f}\n\n"
-          "Keep adjusting the Vertical (X) and Horizontal (Y) sliders to\n"
-          "better isolate the green and red traffic clusters across quadrants!"
-      )
-      lbl_msg = ctk.CTkLabel(
-          m_frame,
-          text=msg,
-          font=ctk.CTkFont(size=13),
-          text_color="#E5E7EB",
-          justify="center",
-          wraplength=500,
-      )
-      lbl_msg.pack(padx=20, pady=20)
-
-      btn_retry = ctk.CTkButton(
-          m_frame,
-          text="Keep Tweaking Sliders",
-          font=ctk.CTkFont(size=14, weight="bold"),
-          fg_color="#FF9800",
-          hover_color="#E68A00",
-          text_color="#000000",
-          height=38,
-          command=modal.destroy,
-      )
-      btn_retry.pack(pady=(10, 15))
+    modal.after(10, _render_modal_body)
 
 
 def run_decision_tree_app(parent=None):
